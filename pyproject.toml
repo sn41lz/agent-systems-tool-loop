@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools==84.0.0", "wheel==0.48.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-systems-tool-loop"
+version = "0.1.0"
+description = "An inspectable, bounded, concurrent agent loop against the raw model SDK."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "jsonschema==4.26.0",
+  "openai==3.31.0",
+  "opentelemetry-sdk==1.45.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build==1.6.1",
+  "mypy==2.4.0",
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+  "pytest-cov==7.1.0",
+  "ruff==0.17.0",
+]
+
+[project.scripts]
+tool-loop = "tool_loop.cli:main"
+
+[project.urls]
+Repository = "https://github.com/sn41lz/agent-systems-tool-loop"
+Issues = "https://github.com/sn41lz/agent-systems-tool-loop/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+tool_loop = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers --strict-config"
+
+[tool.coverage.run]
+source = ["tool_loop"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src/tool_loop"]
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = ["jsonschema", "jsonschema.*"]
+ignore_missing_imports = true

@@ -1,0 +1,79 @@
+{
+  "generated_at": "2026-10-15T06:56:04.690593+00:00",
+  "workload": "synthetic checkout canary incident; scripted replies + async in-memory tools",
+  "workload_source_sha256": "19e81af3f1ef4dd050e0c64daf5e5c814ba3413548276359a7476cd677fcb07f",
+  "source_sha256": {
+    "runtime.py": "ec6181a6fbf65f179edaba3ac4d80a19a54b89505f7f901d3d34e44a21952af9",
+    "providers.py": "5fb0030fb8835407ac9983bced3c99c1eb894ccc2ef9bccc7f2df512b6d1474c",
+    "models.py": "968a03643d498e11723473a5045b7eb20ef4d762a4a1fbaa67a54cb793ac6e2b",
+    "benchmark.py": "55c045c40fb69cf67246b6f15c3f953e4a7a53601ae98eb7d961ecf666fbd7da",
+    "scenarios.py": "19e81af3f1ef4dd050e0c64daf5e5c814ba3413548276359a7476cd677fcb07f",
+    "telemetry.py": "d9c2299a59621620001bf3ced52b7f4905368c02fe0cb888f8e449f51aad0222"
+  },
+  "environment": {
+    "python": "3.14.7",
+    "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+    "machine": "arm64"
+  },
+  "method": {
+    "paired_runs_per_configuration": 30,
+    "discarded_warmup_pairs": 2,
+    "pair_order": "alternating",
+    "percentile": "linear interpolation at (n-1)*q",
+    "delay_scale": 1.0,
+    "limits": {
+      "max_turns": 8,
+      "max_tool_calls": 32,
+      "max_parallel": 4,
+      "run_timeout_s": 30.0,
+      "model_timeout_s": 10.0,
+      "max_model_attempts": 2,
+      "max_tool_output_bytes": 16384,
+      "max_argument_bytes": 8192,
+      "max_json_depth": 32,
+      "max_total_tokens": 20000,
+      "max_output_tokens": 2048,
+      "max_repeated_batch": 2,
+      "retry_backoff_s": 0.025
+    },
+    "only_changed_setting": "max_parallel: 1 \u2192 4"
+  },
+  "pricing_assumption": {
+    "input_per_million": 1.0,
+    "output_per_million": 4.0,
+    "cached_input_per_million": 0.25,
+    "label": "Illustrative USD/million: input=1, output=4, cached=0.25; not provider pricing"
+  },
+  "actual_model_api_calls": 0,
+  "actual_model_api_cost_usd": 0,
+  "live_model_quality": "Not measured; final replies are scripted, not inferred",
+  "streaming_ttft": "Not measured; this runtime uses non-streaming Responses",
+  "groups": {
+    "sequential": {
+      "samples": 30,
+      "protocol_pass_rate": 1.0,
+      "latency_p50_ms": 304.3580830001247,
+      "latency_p95_ms": 307.3232392500813,
+      "synthetic_tokens_per_run": {
+        "input_tokens": 2780,
+        "output_tokens": 650,
+        "cached_input_tokens": 768
+      },
+      "illustrative_usd_per_1000_runs": 4.804
+    },
+    "parallel": {
+      "samples": 30,
+      "protocol_pass_rate": 1.0,
+      "latency_p50_ms": 192.12639600027615,
+      "latency_p95_ms": 195.1877750002268,
+      "synthetic_tokens_per_run": {
+        "input_tokens": 2780,
+        "output_tokens": 650,
+        "cached_input_tokens": 768
+      },
+      "illustrative_usd_per_1000_runs": 4.804
+    }
+  },
+  "p50_speedup": 1.5841554796025383,
+  "all_protocol_checks_passed": true
+}

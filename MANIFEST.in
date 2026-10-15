@@ -1,0 +1,8 @@
+include Makefile Dockerfile docker-compose.yml PRODUCTION_CHECKLIST.md
+include requirements.lock requirements-dev.lock requirements-build.lock
+include .env.example .dockerignore .gitignore
+recursive-include docs *.md *.html *.json *.jsonl
+recursive-include examples *.py
+recursive-include benchmarks *.md *.json *.jsonl *.svg
+recursive-include .github *.yml
+recursive-include tests *.py

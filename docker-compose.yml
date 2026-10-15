@@ -1,0 +1,33 @@
+name: agent-systems-tool-loop
+
+x-runner: &runner
+  build:
+    context: .
+    target: dev
+  user: "${RUNNER_UID:-65532}:${RUNNER_GID:-65532}"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 128
+  mem_limit: 768m
+  cpus: 2.0
+  init: true
+  environment:
+    COVERAGE_FILE: /app/artifacts/.coverage
+  tmpfs:
+    - /tmp:rw,nosuid,nodev,noexec,size=128m,mode=1777
+  volumes:
+    - ./artifacts:/app/artifacts
+
+services:
+  runner:
+    <<: *runner
+    network_mode: none
+
+  live:
+    <<: *runner
+    profiles: [live]
+    environment:
+      COVERAGE_FILE: /app/artifacts/.coverage
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-}"

@@ -1,0 +1,326 @@
+{
+  "run_id": "92959f2db04040578db2795624a26f90",
+  "status": "completed",
+  "final_text": "SYNTHETIC INCIDENT DRILL — scripted protocol demonstration\n\nLikely cause: checkout-api v2.14.0 reduced the per-pod database pool from 30\nconnections to 3 [deploy-02], producing client-side pool starvation during the\n20% canary rollout [topology-01]. This is a strong hypothesis, not a proven cause.\n\nEvidence: canary errors are 28.0% versus stable 0.2%; p95 latency is 2400 ms\nversus 185 ms, and canary pool-wait p95 is 2200 ms [metrics-03]. Canary logs\nshow a full 3-connection pool with 47 waiters immediately after the deploy\n[logs-04]. Database CPU (31%) and query p95 (18 ms) remain normal, weakening\nthe competing database-saturation explanation; healthy dependencies and a 1.5%\ntraffic change also weaken a broad dependency outage or demand spike\n[topology-01, metrics-03]. The delivery-estimate change remains a potential\nconfounder; sampled logs and observational cohorts cannot exclude every cause.\n\nRecommendation for a human operator: pause the rollout and route the 20% canary\ntraffic back to the healthy v2.13.4 cohort. Do not restart or scale the database\nwithout further evidence. After approval and execution, compare error rate,\npool-wait p95, and checkout p95 for five minutes; confirm errors return near\nthe 0.2% stable baseline. Then restore the pool setting in a new canary and\nrepeat a controlled load test. No remediation was executed by this assistant.\n\nRuntime recovery exercised: one rejected schema was corrected by the scripted\nnext turn; a read-only telemetry failure was retried under its explicit policy.\nAll evidence, model replies, and token counts are synthetic.",
+  "turns": 3,
+  "tool_calls": 5,
+  "usage": {
+    "input_tokens": 2780,
+    "output_tokens": 650,
+    "cached_input_tokens": 768
+  },
+  "cost_usd": 0.004804,
+  "pricing_label": "Illustrative USD/million: input=1, output=4, cached=0.25; not provider pricing",
+  "duration_ms": 192.75295799980086,
+  "events": [
+    {
+      "type": "model.completed",
+      "at_ms": 0.21250000008876668,
+      "turn": 1,
+      "proposed_calls": 4
+    },
+    {
+      "type": "tool.queued",
+      "at_ms": 0.2961659997708921,
+      "call_id": "inspect-1",
+      "name": "inspect_service"
+    },
+    {
+      "type": "tool.started",
+      "at_ms": 0.29970800005685305,
+      "call_id": "inspect-1",
+      "name": "inspect_service"
+    },
+    {
+      "type": "tool.queued",
+      "at_ms": 0.36095799987378996,
+      "call_id": "deploys-1",
+      "name": "recent_deploys"
+    },
+    {
+      "type": "tool.started",
+      "at_ms": 0.3633329997683177,
+      "call_id": "deploys-1",
+      "name": "recent_deploys"
+    },
+    {
+      "type": "tool.queued",
+      "at_ms": 0.40616599972054246,
+      "call_id": "metrics-1",
+      "name": "compare_metrics"
+    },
+    {
+      "type": "tool.started",
+      "at_ms": 0.4077909998159157,
+      "call_id": "metrics-1",
+      "name": "compare_metrics"
+    },
+    {
+      "type": "tool.queued",
+      "at_ms": 0.45362499986367766,
+      "call_id": "logs-invalid",
+      "name": "query_logs"
+    },
+    {
+      "type": "tool.started",
+      "at_ms": 0.45495799986383645,
+      "call_id": "logs-invalid",
+      "name": "query_logs"
+    },
+    {
+      "type": "tool.finished",
+      "at_ms": 0.5089999999654538,
+      "call_id": "logs-invalid",
+      "name": "query_logs",
+      "ok": false,
+      "attempts": 0,
+      "error_code": "schema_validation"
+    },
+    {
+      "type": "tool.finished",
+      "at_ms": 51.54758299977402,
+      "call_id": "inspect-1",
+      "name": "inspect_service",
+      "ok": true,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "type": "tool.finished",
+      "at_ms": 61.55491599974994,
+      "call_id": "deploys-1",
+      "name": "recent_deploys",
+      "ok": true,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "type": "tool.finished",
+      "at_ms": 81.6618329999983,
+      "call_id": "metrics-1",
+      "name": "compare_metrics",
+      "ok": true,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "type": "model.completed",
+      "at_ms": 81.95679099981135,
+      "turn": 2,
+      "proposed_calls": 1
+    },
+    {
+      "type": "tool.queued",
+      "at_ms": 82.03287500009537,
+      "call_id": "logs-repaired",
+      "name": "query_logs"
+    },
+    {
+      "type": "tool.started",
+      "at_ms": 82.03858299975764,
+      "call_id": "logs-repaired",
+      "name": "query_logs"
+    },
+    {
+      "type": "tool.retry",
+      "at_ms": 124.79162499994345,
+      "call_id": "logs-repaired",
+      "name": "query_logs",
+      "attempt": 1
+    },
+    {
+      "type": "tool.finished",
+      "at_ms": 192.34016600012183,
+      "call_id": "logs-repaired",
+      "name": "query_logs",
+      "ok": true,
+      "attempts": 2,
+      "error_code": null
+    },
+    {
+      "type": "model.completed",
+      "at_ms": 192.74358299981031,
+      "turn": 3,
+      "proposed_calls": 0
+    },
+    {
+      "type": "run.stopped",
+      "at_ms": 192.75583299986465,
+      "reason": "completed"
+    }
+  ],
+  "tool_results": [
+    {
+      "call_id": "inspect-1",
+      "name": "inspect_service",
+      "ok": true,
+      "value": {
+        "synthetic": true,
+        "evidence_id": "topology-01",
+        "service": "checkout-api",
+        "region": "eu-west-1",
+        "snapshot_at": "2026-01-15T14:12:00Z",
+        "dependencies": [
+          {
+            "service": "inventory-api",
+            "status": "healthy",
+            "p95_ms": 42
+          },
+          {
+            "service": "payments-gateway",
+            "status": "healthy",
+            "p95_ms": 85
+          },
+          {
+            "service": "orders-db",
+            "status": "healthy",
+            "cpu_pct": 31
+          }
+        ],
+        "rollout": {
+          "stable": "v2.13.4",
+          "canary": "v2.14.0",
+          "canary_traffic_pct": 20
+        },
+        "symptom": "pool acquisition timeout on canary pods; stable pods healthy"
+      },
+      "error": null,
+      "attempts": 1,
+      "duration_ms": 51.24220800007606,
+      "cached": false
+    },
+    {
+      "call_id": "deploys-1",
+      "name": "recent_deploys",
+      "ok": true,
+      "value": {
+        "synthetic": true,
+        "evidence_id": "deploy-02",
+        "service": "checkout-api",
+        "deployments": [
+          {
+            "version": "v2.14.0",
+            "started_at": "2026-01-15T14:05:00Z",
+            "cohort": "canary",
+            "changes": [
+              "database pool max_connections reduced from 30 to 3",
+              "checkout response includes optional delivery estimate"
+            ]
+          },
+          {
+            "version": "v2.13.4",
+            "started_at": "2026-01-14T09:00:00Z",
+            "cohort": "stable"
+          }
+        ],
+        "schema_migration": false
+      },
+      "error": null,
+      "attempts": 1,
+      "duration_ms": 61.17679099997986,
+      "cached": false
+    },
+    {
+      "call_id": "metrics-1",
+      "name": "compare_metrics",
+      "ok": true,
+      "value": {
+        "synthetic": true,
+        "evidence_id": "metrics-03",
+        "service": "checkout-api",
+        "window": "14:07-14:12 UTC",
+        "cohorts": {
+          "stable": {
+            "requests": 8000,
+            "error_rate_pct": 0.2,
+            "p95_ms": 185,
+            "pool_wait_p95_ms": 4
+          },
+          "canary": {
+            "requests": 2000,
+            "error_rate_pct": 28.0,
+            "p95_ms": 2400,
+            "pool_wait_p95_ms": 2200
+          }
+        },
+        "controls": {
+          "orders_db_cpu_pct": 31,
+          "orders_db_query_p95_ms": 18,
+          "incoming_rps_change_pct": 1.5
+        },
+        "caveat": "observational cohort comparison; correlation alone does not prove causation"
+      },
+      "error": null,
+      "attempts": 1,
+      "duration_ms": 81.24729199971625,
+      "cached": false
+    },
+    {
+      "call_id": "logs-invalid",
+      "name": "query_logs",
+      "ok": false,
+      "value": null,
+      "error": {
+        "code": "schema_validation",
+        "message": "Arguments do not match the tool schema. Correct the fields and try again.",
+        "retryable": false,
+        "details": [
+          {
+            "path": [
+              "service"
+            ],
+            "rule": "type"
+          },
+          {
+            "path": [
+              "service"
+            ],
+            "rule": "enum"
+          }
+        ]
+      },
+      "attempts": 0,
+      "duration_ms": 0.0491660002808203,
+      "cached": false
+    },
+    {
+      "call_id": "logs-repaired",
+      "name": "query_logs",
+      "ok": true,
+      "value": {
+        "synthetic": true,
+        "evidence_id": "logs-04",
+        "service": "checkout-api",
+        "sampled": true,
+        "entries": [
+          {
+            "at": "2026-01-15T14:07:03Z",
+            "version": "v2.14.0",
+            "level": "ERROR",
+            "event": "database_pool_timeout",
+            "pool_limit": 3,
+            "active": 3,
+            "waiters": 47
+          },
+          {
+            "at": "2026-01-15T14:07:04Z",
+            "version": "v2.14.0",
+            "level": "WARN",
+            "event": "request_deadline_exceeded",
+            "route": "/checkout"
+          }
+        ],
+        "caveat": "sampled logs cannot establish the absence of all other failures"
+      },
+      "error": null,
+      "attempts": 2,
+      "duration_ms": 110.29112500000338,
+      "cached": false
+    }
+  ],
+  "scenario": "Checkout canary: distinguish database starvation from a dependency outage",
+  "usage_label": "synthetic fixture tokens; not measured model usage",
+  "data_source": "synthetic in-memory incident evidence",
+  "model_source": "scripted protocol fixture; no inference",
+  "model": "scripted-fixture"
+}
