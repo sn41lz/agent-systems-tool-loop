@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements*.lock
+      - name: Install the locked environment
+        run: make setup
+      - name: Lint and formatting
+        run: make lint
+      - name: Type checking
+        run: make typecheck
+      - name: Test contracts and failure cases
+        run: make local-test
+      - name: Run offline demonstration and benchmark smoke test
+        run: make local-demo local-benchmark RUNS=3
+      - name: Build distributable wheel and source archive
+        run: make build
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: evidence-python-${{ matrix.python }}
+          path: |
+            artifacts/
+            dist/
+          retention-days: 14
+          include-hidden-files: true
+
+  container:
+    name: Container / no network during execution
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - name: Check Compose configuration
+        run: docker compose config --quiet
+      - name: Build and run offline tests
+        run: make test
+      - name: Run the documented single-command demo
+        run: make demo
+      - name: Verify the runtime image
+        run: |
+          docker build --target runtime -t tool-loop:runtime .
+          docker run --rm --network none --read-only --tmpfs /tmp:rw,nosuid,nodev,noexec,size=128m --cap-drop ALL --security-opt no-new-privileges tool-loop:runtime python -m tool_loop --help
+      - name: Upload container evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: evidence-container
+          path: artifacts/
+          retention-days: 14
+          include-hidden-files: true

@@ -1,78 +1,127 @@
-# Raw Agent Tool Loop
+# Agent Systems · Tool Loop
 
-An inspectable agent control loop built directly on a model SDK, with explicit tool contracts and bounded execution.
+[![CI](https://github.com/sn41lz/agent-systems-tool-loop/actions/workflows/ci.yml/badge.svg)](https://github.com/sn41lz/agent-systems-tool-loop/actions/workflows/ci.yml)
 
-**Status: planning — implementation has not started.** This README describes intended scope and acceptance criteria. It does not establish working behavior, completed tests, security guarantees, or measured performance.
+**An agent can propose a tool call. It does not get to decide whether that call is safe to execute.**
 
-Part of an eight-repository agent-systems portfolio.
+This Python runtime makes that boundary inspectable: a raw model adapter proposes work; an explicit control loop validates arguments, schedules independent tools, returns recoverable errors, and stops when a budget or circuit breaker trips. No LangChain, LlamaIndex, or Agents SDK.
 
-## Planned scope
+The included incident drill investigates a failing checkout canary. It gathers deployment, topology, and cohort metrics concurrently, rejects an invalid log query, repairs it on the next model turn, survives a transient telemetry failure, and produces a cited diagnosis with a human verification plan. A standalone HTML report exposes exactly what ran and when.
 
-- Model-to-tool dispatch with JSON Schema validation and structured tool results.
-- Concurrent independent tools with bounded parallelism, cancellation, and timeouts.
-- Recoverable tool errors, bounded model-assisted correction, and explicit stop reasons.
+**The default drill uses synthetic evidence and scripted model replies.** It demonstrates real runtime execution, concurrency, validation and recovery; it does not measure model reasoning quality. An optional raw OpenAI Responses adapter can run the same read-only tools with a live model.
 
-## Planned setup and observability
+## Run it
 
-The implementation is intended to provide a `docker-compose.yml` and `Makefile` so a reviewer can use `make demo` for a deterministic offline demonstration and `make test` for offline regression checks. **These commands and their supporting files are not implemented yet.** Live-model runs will be optional and separately documented with configuration and cost assumptions.
+With Docker and Compose v2 installed, from this repository:
 
-Every model call and tool execution is intended to emit an OpenTelemetry span. Planned aggregate reporting includes token usage, estimated USD per 1,000 requests, p50/p95 latency, and p50/p95 time to first token (TTFT) where streaming applies. Offline fixtures can verify instrumentation and behavior; live-provider performance requires separate measurements.
+```sh
+make demo
+```
 
-The core mechanics will use raw model SDKs with explicit control flow; no LangChain, LlamaIndex, or other orchestration framework will implement them.
+Open `artifacts/demo/report.html`. No API key or telemetry collector is needed. The command builds the pinned image, runs with network disabled, and removes the container. The first build downloads dependencies.
 
-See [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md) for shared acceptance criteria.
+Other complete review paths:
 
-## Proposed architecture and tradeoffs
+```sh
+make test                       # behavioral, fault-injection, SDK-contract and artifact tests
+make benchmark RUNS=30          # paired sequential/parallel comparison + raw results
+```
 
-A provider adapter feeds an explicit state machine. A tool registry validates calls before a bounded executor runs them, and a reducer appends structured results to the next model input. Execution and retry budgets belong to the loop, not to the model.
+Without Docker, use Python 3.12+ and Make:
 
-Parallel tools can lower latency but complicate ordering, cancellation, and side effects. Error correction can improve completion rates while adding model calls and cost. The initial scope should favor deterministic, side-effect-free tools.
+```sh
+make local                      # isolated setup + demo + tests
+make local-benchmark RUNS=30
+```
 
-## Roadmap and acceptance criteria
+The setup uses exact, SHA-256-checked dependency locks. See [development and container details](docs/development.md). A committed [example report](docs/examples/report.html), [run result](docs/examples/result.json), and [OTel trace](docs/examples/traces.jsonl) are available to inspect without running anything; download the HTML to open it locally.
 
-Complete the shared reproducibility and observability checklist, then implement and verify these project-specific criteria:
+## What makes the loop interesting
 
-- [ ] Reject malformed and unknown tool calls without executing them; demonstrate structured recovery with fixed fixtures.
-- [ ] Execute independent tools concurrently while preserving deterministic result association.
-- [ ] Enforce call, retry, token, and wall-clock budgets with observable terminal reasons.
-- [ ] Compare sequential and concurrent execution on the same workload, reporting completion rate alongside latency and cost.
+| Boundary | Implemented behavior |
+| --- | --- |
+| Untrusted proposals | JSON Schema 2020-12 validation before dispatch; unknown tools, duplicate keys, invalid Unicode, non-finite numbers, excessive nesting and argument size are rejected. |
+| Concurrency | Explicit `parallel_safe` opt-in, bounded fan-out, and serial barriers for all other tools. Reduction always follows proposal order. |
+| Recovery | Structured errors are fed back to the model for correction. Automatic tool retries require both `retry_safe=True` and an explicit `ToolTransientError`. Each attempt receives fresh arguments. |
+| Cancellation | Per-call timeouts and a run deadline cancel and drain cooperative tasks. Completed, cancelled and never-started outcomes remain visible in proposal order. |
+| Circuit breakers | Turn, proposed-call, observed-token, repeated-batch and wall-time limits; per-model attempt budgets; bounded arguments and outputs. |
+| Traceability | Real OTel spans for runs, every model request, each logical tool call and every handler attempt. Parent IDs preserve concurrent context. |
+| Provider protocol | Raw Responses API; no hidden SDK retries; incomplete responses fail closed; all provider output items, including encrypted reasoning, are replayed. |
+| Evidence | Local JSONL traces, structured run results, portable HTML reports, and paired benchmark samples with environment/configuration/source hashes. |
 
-## Candidate failure modes
+## Architecture
 
-These are design risks to investigate, **not tested or observed findings**:
+```mermaid
+flowchart LR
+    P[Raw provider adapter] --> L[Explicit control loop]
+    L --> V[Validate call IDs / JSON / schema]
+    V --> S[Bounded scheduler]
+    S --> R[Parallel-safe read group]
+    S --> W[Serial barrier tool]
+    R --> O[Ordered result reducer]
+    W --> O
+    O --> P
+    L --> B[Budgets and circuit breakers]
+    L -. spans .-> T[OpenTelemetry / JSONL / HTML]
+```
 
-- The model repeats an invalid call or loops without making progress.
-- A timed-out tool completes late, or one failed task prevents cancellation of its siblings.
-- Retries duplicate side effects, or parallel execution violates an unstated dependency.
+Read [the runtime](src/tool_loop/runtime.py) for the mechanics, [the provider adapter](src/tool_loop/providers.py) for the wire boundary, and [the incident scenario](src/tool_loop/scenarios.py) for the complete drill. [Architecture and decisions](docs/architecture.md) explains the invariants and tradeoffs.
 
-The implementation will add reproduction cases, actual outcomes, and mitigations as evidence becomes available.
+## Measured baseline versus optimized execution
 
-## Baseline versus optimized metrics
+The [reference benchmark](benchmarks/reference/summary.json) compares the **same incident protocol** with `max_parallel=1` and `max_parallel=4`. It runs 30 measured pairs, alternates configuration order, discards two warmup pairs, and verifies evidence IDs, schema rejection, retry behavior, turn count and terminal status in every measured run.
 
-No benchmark has been run. The following comparison is planned:
+![Sequential versus parallel scheduling](benchmarks/reference/latency.svg)
 
-- **Baseline:** Sequential validated tool execution with a fixed prompt and identical workload.
-- **Optimized:** Bounded parallel execution and capped correction, with budgets held constant.
+| Configuration | Samples | Protocol checks | p50 | p95 |
+| --- | ---: | ---: | ---: | ---: |
+| sequential | 30 | 100% | 304.36 ms | 307.32 ms |
+| parallel | 30 | 100% | 192.13 ms | 195.19 ms |
 
-| Metric | Baseline | Optimized |
+These are measured wall-clock times for synthetic, in-memory tools on the recorded host. They include tracing and runtime overhead. They are not live-provider latency or model-quality results. Timing varies by machine and workload; CI checks correctness rather than imposing a brittle speed threshold. p50/p95 use linear interpolation at `(n−1)q`.
+
+Both configurations report 2,780 synthetic input tokens, 650 synthetic output tokens, and 768 cached input tokens per run. Actual model API calls and actual model API cost are **zero**. The example rate card is deliberately fictional: USD 1 / 4 / 0.25 per million input / output / cached tokens, projecting **$4.804 per 1,000 runs**. Live-model quality, live latency, real cost and streaming TTFT remain unmeasured. This implementation uses non-streaming model responses.
+
+Inspect [every measured sample](benchmarks/reference/runs.jsonl), the [method and source hashes](benchmarks/reference/summary.json), or reproduce with `make benchmark RUNS=30`.
+
+## Failure modes and architectural tradeoffs
+
+| Failure or limit | Runtime behavior / evidence | Remaining boundary |
 | --- | --- | --- |
-| Input/output/total tokens per request | Not yet measured | Not yet measured |
-| Estimated USD per 1,000 requests | Not yet measured | Not yet measured |
-| End-to-end latency p50 | Not yet measured | Not yet measured |
-| End-to-end latency p95 | Not yet measured | Not yet measured |
-| Streaming TTFT p50, where applicable | Not yet measured | Not yet measured |
-| Streaming TTFT p95, where applicable | Not yet measured | Not yet measured |
-| Project-specific quality and failure rate | Not yet measured | Not yet measured |
+| Invalid or invented tool call | Structured error; handler is never invoked. The incident drill repairs a rejected schema. | A real model may fail to correct it; budgets still apply. |
+| Repeated work with fresh call IDs | Canonical argument fingerprint stops consecutive identical batches. Try `.venv/bin/python -m tool_loop demo --scenario loop` after local setup. | Longer alternating cycles are bounded by turns/calls rather than detected semantically. |
+| Duplicate call ID | Rejects the whole batch before execution. | This is protocol protection, not persistent idempotency across runs. |
+| Transient failure | Retries only explicitly safe handlers; individual attempts are traced. | Retry safety is an application contract, not something inferred by the model. |
+| Timeout or cancellation | Cancels cooperative tasks; preserves partial outcomes; does not automatically retry the ambiguous effect. | Async cancellation cannot stop blocking or cancellation-suppressing code, or undo external effects. |
+| Observed token budget exceeded | Accounts for the response, stops tools and further requests; caps requested output tokens. | Prompt usage and billed timeout/retry attempts may be unknown until afterward. This is **not a hard spend cap**. |
+| Tool output too large or not JSON | Returns an error asking the model to narrow the query; never truncates JSON mid-object. | The trusted handler may allocate memory before the output limit is checked. |
+| Tool content contains instructions | Developer instructions mark tool data as untrusted; execution stays limited to the registered tools. | Prompt-injection resistance and answer truth require their own live-model evaluations. |
+| Unsafe operations need ordering | Non-parallel tools act as barriers around read groups. | A caller that incorrectly marks a tool parallel/retry safe can violate its own contract. |
 
-Future results must identify the workload revision, model/provider configuration, environment, concurrency, sample counts, and quality criteria. Cost estimates must disclose pricing date and assumptions. Report the complete workload, including errors and retries, and retain raw results so baseline and optimized runs can be reproduced. Do not substitute target values for measurements.
+Tools are trusted, cooperative async functions. This project is **not an isolation boundary for arbitrary generated Python**. It also does not implement distributed execution, durable recovery, exactly-once effects, context compaction, or cross-run memory. See [verification boundaries](docs/architecture.md#verification-boundaries).
 
-## Portfolio
+## Optional live model
 
-- [Raw Agent Tool Loop](https://github.com/sn41lz/agent-systems-tool-loop)
-- [Context Window Engine](https://github.com/sn41lz/agent-systems-context-window)
-- [Hierarchical Agent Memory](https://github.com/sn41lz/agent-systems-hierarchical-memory)
-- [Multi-Agent Orchestrator](https://github.com/sn41lz/agent-systems-multi-agent-orchestrator)
-- [Agent Evaluation Harness](https://github.com/sn41lz/agent-systems-eval-harness)
-- [Secure Code Sandbox](https://github.com/sn41lz/agent-systems-secure-sandbox)
-- [Durable Agent Runtime](https://github.com/sn41lz/agent-systems-durable-runtime)
-- [Agent Platform API and SDKs](https://github.com/sn41lz/agent-systems-api-sdk)
+Choose a model ID available to your own OpenAI project. The live path can make billable requests; the synthetic tools remain read-only.
+
+```sh
+export OPENAI_API_KEY='your key'
+export OPENAI_MODEL='your chosen model ID'
+make live
+```
+
+Or, after `make setup`:
+
+```sh
+.venv/bin/python -m tool_loop live --model "$OPENAI_MODEL" --output artifacts/live
+```
+
+Model and provider IDs, token usage and outcome metadata are recorded. Prices are unknown by default; supply all three `--input-rate`, `--output-rate`, `--cached-rate` values (USD per million tokens) and `--price-label` to calculate a caller-supplied estimate. Verify current prices yourself. Estimates cover reported usage; unknown billed attempts and non-token charges are excluded.
+
+Traces omit prompts, tool arguments/results, reasoning payloads and exception messages. Live result/report content is omitted by default; `--include-content` explicitly enables it. The final response is still printed to the invoking terminal. Artifacts are local and traces/results/reports use private file permissions; review them before sharing. The API uses `store=False` and preserves returned reasoning items for the next request, as required by the [official function-calling guidance](https://developers.openai.com/api/docs/guides/function-calling). This setting is not a claim about organization-level retention policy.
+
+## Extend it
+
+Implement `Provider.generate(ModelRequest) -> ModelReply` to change models, or register an async `Tool` with a schema and explicit execution policy. [The minimal example](examples/custom_tool.py) runs a custom tool without credentials. `Telemetry` is scoped per instance, so independent agents can be embedded without changing a host application's global tracer provider.
+
+The [production checklist](PRODUCTION_CHECKLIST.md) links implemented requirements to evidence. CI runs lint, type checking, behavioral tests, packaging, the offline demo and benchmark on Python 3.12–3.14, plus actual Docker execution. No provider credentials are needed in CI.
