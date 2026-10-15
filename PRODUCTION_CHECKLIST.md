@@ -11,7 +11,7 @@
 
 ## Inspectable mechanics
 
-- [ ] In repositories 01–04, implement control loops, state reducers, context compaction, memory policies, and coordination directly against raw model SDKs; do not use LangChain, LlamaIndex, or another orchestration framework for the core mechanics.
+- [ ] In the tool loop, context window, hierarchical memory, and multi-agent orchestration repositories, implement control loops, state reducers, context compaction, memory policies, and coordination directly against raw model SDKs; do not use LangChain, LlamaIndex, or another orchestration framework for the core mechanics.
 - [ ] Document architecture, execution budgets, tradeoffs, failure modes, and the boundaries of what has actually been verified.
 
 ## Observability and benchmarks
